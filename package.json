@@ -1,0 +1,13 @@
+{
+  "name": "couchbase_tut",
+  "version": "1.0.0",
+  "description": "a tiny tutorial to review couchbase's event query ability (temporal and spatial search)",
+  "main": "index.js",
+  "repository": "https://github.com/victusfate/coucbase_tut",
+  "author": "victusfate",
+  "license": "MIT",
+  "dependencies": {
+    "couchbase": "^2.2.5",
+    "request-promise": "^4.1.1"
+  }
+}
