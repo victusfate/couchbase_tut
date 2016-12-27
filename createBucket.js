@@ -9,10 +9,12 @@ const options = {
   method: 'post',
   uri: `http://${userPass}@localhost:8091/pools/default/buckets`,
   form: {
-    name        : sTable,
-    ramQuotaMB  : 6000,
-    authType    : 'none',
-    proxyPort   : 11216
+    name          : sTable,
+    ramQuotaMB    : 1000,    // 1 Gig ram
+    authType      : 'none',
+    proxyPort     : 11216,
+    replicaNumber : 0,
+    threadsNumber : 6        // 2-8 optional
   },
   json: true
 };
