@@ -1,6 +1,7 @@
 const couchbase = require('couchbase')
-const cluster = new couchbase.Cluster('couchbase://localhost/');
-const bucket = cluster.openBucket('default');
+const cluster   = new couchbase.Cluster('couchbase://localhost/');
+const sTable    = 'default';
+const bucket    = cluster.openBucket(sTable);
 const N1qlQuery = couchbase.N1qlQuery;
 
 bucket.manager().createPrimaryIndex(function() {

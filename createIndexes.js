@@ -1,65 +1,56 @@
-const r = require('couchbase');
+const couchbase = require('couchbase')
+const cluster   = new couchbase.Cluster('couchbase://localhost/');
+const sTable    = 'incidents';
+const bucket    = cluster.openBucket(sTable);
+const N1qlQuery = couchbase.N1qlQuery;
 
-/*
-r.connect( {host: 'localhost', port: 28015, db: 'test'}, (err, conn) => {
-  if (err) throw err;
+const Promise   = require("bluebird");
 
-  const sTable = 'incidents';
+const aIndexes = [
+  `create primary index id_idx on ${sTable} using GSI;`, // alternative to bucket.manager().createPrimaryIndex(function() {...});
+  `create index ts_idx on ${sTable} (ts) using GSI;`,
+  `create index latitude_idx on ${sTable} (latitude) using GSI;`,
+  `create index longitude_idx on ${sTable} (longitude) using GSI;`
+];
 
-  r.table(sTable).indexCreate('ts').run(conn)
-  .catch( (err) => {
-    console.log({ action: 'indexCreate ts err', err:err });
-  })
-  .then( (result) => {
-    console.log({ action: 'indexCreate ts', result: JSON.stringify(result, null, 2) });
-    return r.table(sTable).indexCreate('latitude').run(conn);
-  })
-  .catch( (err) => {
-    console.log({ action: 'indexCreate latitude err', err:err });
-  })
-  .then( (result) => {
-    console.log({ action: 'indexCreate latitude', result: JSON.stringify(result, null, 2) });
-    return r.table(sTable).indexCreate('longitude').run(conn);
-  })
-  .catch( (err) => {
-    console.log({ action: 'indexCreate longitude err', err:err });
-  })  
-  .then( (result) => {
-    console.log({ action: 'indexCreate longitude', result: JSON.stringify(result, null, 2) });
-    return r.table(sTable).indexCreate('latitude_ts, lambda x: [x["latitude"], x["ts"]]').run(conn);
-  })
-  .catch( (err) => {
-    console.log({ action: 'indexCreate latitude_ts err', err:err });
-  })  
-  .then( (result) => {
-    console.log({ action: 'indexCreate latitude ts', result: JSON.stringify(result, null, 2) });
-    return r.table(sTable).indexCreate('longitude_ts, lambda x: [x["longitude"], x["ts"]]').run(conn);
-  })
-  .catch( (err) => {
-    console.log({ action: 'indexCreate longitude_ts err', err:err });
-  })
-  .then( (result) => {
-    console.log({ action: 'indexCreate longitude ts', result: JSON.stringify(result, null, 2) });
-    return r.table(sTable).indexCreate('ts_latitude, lambda x: [x["ts"], x["latitude"]]').run(conn);
-  })
-  .catch( (err) => {
-    console.log({ action: 'indexCreate ts_latitude err', err:err });
-  })  
-  .then( (result) => {
-    console.log({ action: 'indexCreate latitude ts', result: JSON.stringify(result, null, 2) });
-    return r.table(sTable).indexCreate('latitude_longitude, lambda x: [x["latitude"], x["longitude"]]').run(conn);
-  })
-  .catch( (err) => {
-    console.log({ action: 'indexCreate latitude_longitude err', err:err });
-  })  
-  .then( (result) => {
-    console.log({ action: 'indexCreate latitude_longitude', result: JSON.stringify(result, null, 2) });
-  })  
-  .then( (result) => {
-    process.exit(0);
-  })
-  .catch( (err) => {
-    throw err;
-  })
-});
-*/
+const queryPromise = (sQuery) => {
+  const sAction = 'queryPromise';
+  return new Promise( (resolve,reject) => {
+    const query = N1qlQuery.fromString(sQuery);
+    bucket.query(query, (err,result) => {
+      if (err) {
+        console.log({ action: sAction + '.err', sQuery: sQuery, err:err });
+        // reject(err);
+        resolve(); // just keep going
+      }
+      else {
+        // Print Results
+        console.log({ action: sAction, sQuery: sQuery, result:result });
+        resolve(result)      
+      }
+    });    
+  });
+}
+
+// run promises 1 at a time to avoid a conflict at GSI create index, see below
+
+const aPromise = Promise.resolve(aIndexes).map(queryPromise,{ concurrency: 1 });
+
+// when running all index creates simultaneously
+// Error: GSI CreateIndex() - cause: Build Already In Progress. Bucket incidents
+// let aPromises = [];
+// for (let sQuery of aIndexes) {
+//   console.log('sQuery',sQuery);
+//   aPromises.push(queryPromise(sQuery));
+// }
+// Promise.all(aPromises)
+
+aPromise.then( (aResults) => {
+  console.log({ action: 'createIndexes.Successful', aResults: aResults });
+  process.exit(0);
+})
+.catch( (err) => {
+  console.log({ action: 'createIndexes.Failed', err:err });
+  process.exit(1);
+})
+

@@ -1,82 +1,94 @@
-/*
-const r = require('rethinkdb');
 
-r.connect( {host: 'localhost', port: 28015, db: 'test' }).then( (conn) => {
-  const sTable = 'incidents';
+const couchbase = require('couchbase')
+const cluster   = new couchbase.Cluster('couchbase://localhost/');
+const sTable    = 'incidents';
+const bucket    = cluster.openBucket(sTable);
+const N1qlQuery = couchbase.N1qlQuery;
+
+const nearestQuery = (options) => {
+  const sAction = 'nearestQuery';
+
+  const aCommand = [ 
+    `select * from ${sTable}`,      
+    `where (latitude  >= ${options.lowerLatitude})  and (latitude  <= ${options.upperLatitude  })` +
+     ` and (longitude >= ${options.lowerLongitude}) and (longitude <= ${options.upperLongitude })`,
+    'order by ts desc',
+    `limit ${options.N}`
+  ];
+
+  // const aCommand = [ 
+  //   `select * from ${sTable} limit 1`
+  // ];
+
+  return new Promise( (resolve,reject) => {
+    setTimeout( () => {
+      // const query = N1qlQuery.fromString(aCommand.join(' '));
+      const query = N1qlQuery.fromString(aCommand.join(' ')).adhoc(false);  // assists caching
+      bucket.query(query, (err,result) => {
+        if (err) {
+          console.log({ action: sAction + '.err', options:options, err:err });
+          reject(err)
+        }
+        else {
+          let aOut = [];
+          if (Array.isArray(result) && result.length >= 1) {
+            aOut = result[0][sTable];
+          }
+          // Print Results        
+          console.log({ action: sAction, options:options, result:aOut });
+          resolve(aOut)      
+        }
+      });    
+    },Math.random()*1000);
+  });
+}
+
+const center    = [-73.993549, 40.727248];
+const lowerLeft = [-74.009180, 40.716425];
+const deltaLon  = 2 * Math.abs(center[0] - lowerLeft[0]);
+const deltaLat  = 2 * Math.abs(center[1] - lowerLeft[1]);
+
+const NQueries = 1;
+const N = 20;
 
 
-  const center    = [-73.993549, 40.727248];
-  const lowerLeft = [-74.009180, 40.716425];
-  const deltaLon  = 2 * Math.abs(lowerLeft[0] - (-73.97725));
-  const deltaLat  = 2 * Math.abs(lowerLeft[1] - (40.7518692));
+let t0 = Date.now();
 
-  const NQueries = 1000;
-  const N = 20;
+let aPromises = [];
+for (let i=0;i < NQueries;i++) {
+  const searchLon       = lowerLeft[0] + Math.random() * deltaLon;
+  const searchLat       = lowerLeft[1] + Math.random() * deltaLat;
+  const halfWinLon      = Math.random() * 0.04;
+  const halfWinLat      = Math.random() * 0.04;
+
+  // match all
+  // const searchLon       = center[0];
+  // const searchLat       = center[1];
+  // const halfWinLon      = deltaLon/2;
+  // const halfWinLat      = deltaLat/2;
+
+  const lowerLatitude   = searchLat - halfWinLat;
+  const lowerLongitude  = searchLon - halfWinLon;
+  const upperLatitude   = searchLat + halfWinLat;
+  const upperLongitude  = searchLon + halfWinLon;
+
+  let aQuery = nearestQuery({ lowerLatitude: lowerLatitude, upperLatitude: upperLatitude, lowerLongitude: lowerLongitude, upperLongitude: upperLongitude, N:N });
+  aPromises.push(aQuery);
+}
 
 
-  let t0 = Date.now();
-
-  let aPromises = [];
-  for (let i=0;i < NQueries;i++) {
-    const searchLon       = lowerLeft[0] + Math.random() * deltaLon;
-    const searchLat       = lowerLeft[1] + Math.random() * deltaLat;
-    const halfWinLon      = Math.random() * 0.04;
-    const halfWinLat      = Math.random() * 0.04;
-
-    const lowerLatitude   = searchLat - halfWinLat;
-    const lowerLongitude  = searchLon - halfWinLon;
-    const upperLatitude   = searchLat + halfWinLat;
-    const upperLongitude  = searchLon + halfWinLon;
-
-
-    let aQuery = r.table(sTable)
-    .orderBy({ index: r.desc('ts')})
-    // .filter(function (oIncident) {
-    //   return oIncident('latitude').gt(lowerLatitude)
-    //     .and(oIncident('latitude').lt(upperLatitude))
-    //     .and(oIncident('longitude').gt(lowerLongitude))
-    //     .and(oIncident('longitude').lt(upperLongitude))
-    // })
-    .filter(function (oIncident) {
-      return oIncident('latitude').gt(lowerLatitude);
-    })
-    .filter(function (oIncident) {
-      return oIncident('latitude').lt(upperLatitude);
-    })
-    .filter(function (oIncident) {
-      return oIncident('longitude').gt(lowerLongitude);
-    })
-    .filter(function (oIncident) {
-      return oIncident('longitude').lt(upperLongitude);
-    })
-    // .orderBy({ index: r.desc('ts')})
-    .limit(N)
-    .run(conn)
-    .then( (cursor) => {
-      // console.log({ action: 'query', aKeys: aKeys, ll: [lowerLatitude,upperLatitude,lowerLongitude,upperLongitude] });
-      return cursor.toArray()
-    })
-
-    aPromises.push(aQuery);
-  }
-  
-
-  Promise.all(aPromises).then( (aResults) => {
-    let t1 = Date.now();
-    console.log({ queriesTimeMS: t1-t0, queriesPerSecond: NQueries / ( (t1-t0)/1000 ) })
-    for (let i in aResults) {
-      const result = aResults[i];
-      const aKeys = result.map( (oMatch) => oMatch.id )
-      // console.log({ action: 'query', aKeys: aKeys });
-    }
-    return conn.close();
-  })
-  .catch( (err) => {
-    throw err;
-  })       
-
+Promise.all(aPromises).then( aResults => {
+  let t1 = Date.now();
+  console.log({ queriesTimeMS: t1-t0, queriesPerSecond: NQueries / ( (t1-t0)/1000 ) })
+  // console.log({ action: 'query.success', aResults: aResults });
+  // for (let i in aResults) {
+  //   const result = aResults[i];
+  //   console.log({ action: 'query', aKeys: aKeys });
+  //   // const aKeys = result.map( (oMatch) => oMatch.id )
+  //   // console.log({ action: 'query', aKeys: aKeys });
+  // }
 })
-.catch( (err) => {
-  throw err;
-})
-*/
+.catch( err => {
+  console.log({ action: 'query.err', err:err });
+  process.exit(1);
+})       
