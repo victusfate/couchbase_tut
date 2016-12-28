@@ -21,8 +21,9 @@ const nearestQuery = (options) => {
   // ];
 
   return new Promise( (resolve,reject) => {
-    setTimeout( () => {
+    // setTimeout( () => {
       // const query = N1qlQuery.fromString(aCommand.join(' '));
+      console.log({ action: sAction, query: aCommand.join(' ') });
       const query = N1qlQuery.fromString(aCommand.join(' ')).adhoc(false);  // assists caching
       bucket.query(query, (err,result) => {
         if (err) {
@@ -39,7 +40,7 @@ const nearestQuery = (options) => {
           resolve(aOut)      
         }
       });    
-    },Math.random()*1000);
+    // },Math.random()*1000);
   });
 }
 

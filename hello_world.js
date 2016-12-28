@@ -15,6 +15,7 @@ bucket.manager().createPrimaryIndex(function() {
         N1qlQuery.fromString('SELECT * FROM default WHERE $1 in interests LIMIT 1').consistency(N1qlQuery.Consistency.REQUEST_PLUS),
         ['African Swallows'],
         function (err, rows) {
+          if (err) throw err;
           console.log("N1qlQuery 1 rows: %j", rows);
         }
       );
@@ -23,6 +24,7 @@ bucket.manager().createPrimaryIndex(function() {
           N1qlQuery.fromString('SELECT * FROM default WHERE $1 in interests LIMIT 1'),
           ['African Swallows'],
           function (err, rows) {
+            if (err) throw err;
             console.log("N1qlQuery 2 (1s delayed) rows: %j", rows);
           }
         );

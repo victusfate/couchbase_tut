@@ -13,11 +13,14 @@ const aIndexes = [
   `create index longitude_idx on ${sTable} (longitude) using GSI;`
 ];
 
+const t0 = Date.now();
+
 const queryPromise = (sQuery) => {
   const sAction = 'queryPromise';
   return new Promise( (resolve,reject) => {
     const query = N1qlQuery.fromString(sQuery);
     bucket.query(query, (err,result) => {
+      console.log({ action: sAction, time: Date.now()-t0 });
       if (err) {
         console.log({ action: sAction + '.err', sQuery: sQuery, err:err });
         // reject(err);
