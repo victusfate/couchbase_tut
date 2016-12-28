@@ -7,3 +7,15 @@ const couchbase = require('couchbase');
 // map:    https://github.com/couchbaselabs/beersample-node/blob/master/beer_designs.js#L11,#L17
 // update: https://github.com/couchbaselabs/beersample-node/blob/master/beer_designs.js#L26,#L44
 
+// added it to the couchbase ui directly
+
+// spatial view
+
+// function (doc) {
+//   if (doc.latitude && doc.longitude) {
+//     emit([{
+//      "type": "Point",
+//      "coordinates":[doc.longitude, doc.latitude]
+//     }], { doc: doc });
+//   }
+// }
