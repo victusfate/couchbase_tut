@@ -78,7 +78,10 @@ const lowerLeft = [-74.009180, 40.716425];
 const deltaLon  = 2 * Math.abs(center[0] - lowerLeft[0]);
 const deltaLat  = 2 * Math.abs(center[1] - lowerLeft[1]);
 
-const NQueries = 1000; // even fast covered index query can't handle 100 queries per second, local system chokes
+// spatial view query can't handle 1000 queries
+// local system chokes all kinds of badness ensues
+// chrome freezes, dropbox fails to respond, mass hysteria
+const NQueries = 100; 
 const N = 20;
 
 
