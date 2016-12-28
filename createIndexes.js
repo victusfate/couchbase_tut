@@ -11,6 +11,9 @@ const aIndexes = [
   `create index ts_idx on ${sTable} (ts) using GSI;`,
   `create index latitude_idx on ${sTable} (latitude) using GSI;`,
   `create index longitude_idx on ${sTable} (longitude) using GSI;`
+  `create index longitude_latitude_ts_id_idx on ${sTable} (longitude,latitude,ts,id) using GSI;` // this helped for a covered query, 100ms
+  // `create index longitude_latitude_ts_idx on ${sTable} (longitude,latitude,ts) using GSI;`  // explored compound indexes, no help
+  // `create index ts_longitude_latitude_idx on ${sTable} (ts,longitude,latitude) using GSI;`  
 ];
 
 const t0 = Date.now();

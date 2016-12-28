@@ -9,38 +9,46 @@ const nearestQuery = (options) => {
   const sAction = 'nearestQuery';
 
   const aCommand = [ 
-    `select * from ${sTable}`,      
-    `where (latitude  >= ${options.lowerLatitude})  and (latitude  <= ${options.upperLatitude  })` +
-     ` and (longitude >= ${options.lowerLongitude}) and (longitude <= ${options.upperLongitude })`,
+    `select ts,longitude,latitude,id from ${sTable}`,      
+    `where (longitude between ${options.lowerLongitude} and ${options.upperLongitude})` +
+     ` and (latitude  between ${options.lowerLatitude}  and ${options.upperLatitude})`,
     'order by ts desc',
     `limit ${options.N}`
   ];
+
+  // sloowwwww!, several seconds at minimum
+  // const aCommand = [ 
+  //   `select * from ${sTable}`,      
+  //   `where (latitude  between ${options.lowerLatitude}  and ${options.upperLatitude})` +
+  //    ` and (longitude between ${options.lowerLongitude} and ${options.upperLongitude})`,
+  //   'order by ts desc',
+  //   `limit ${options.N}`
+  // ];
 
   // const aCommand = [ 
   //   `select * from ${sTable} limit 1`
   // ];
 
   return new Promise( (resolve,reject) => {
-    // setTimeout( () => {
-      // const query = N1qlQuery.fromString(aCommand.join(' '));
-      console.log({ action: sAction, query: aCommand.join(' ') });
-      const query = N1qlQuery.fromString(aCommand.join(' ')).adhoc(false);  // assists caching
-      bucket.query(query, (err,result) => {
-        if (err) {
-          console.log({ action: sAction + '.err', options:options, err:err });
-          reject(err)
+    // console.log({ action: sAction, query: aCommand.join(' ') });
+    // const query = N1qlQuery.fromString(aCommand.join(' '));
+    const query = N1qlQuery.fromString(aCommand.join(' ')).adhoc(false);  // assists caching
+    bucket.query(query, (err,result) => {
+      if (err) {
+        console.log({ action: sAction + '.err', options:options, err:err });
+        reject(err)
+      }
+      else {
+        let aOut = [];
+        if (Array.isArray(result) && result.length >= 1) {
+          // aOut = result[0][sTable];
+          aOut = result
         }
-        else {
-          let aOut = [];
-          if (Array.isArray(result) && result.length >= 1) {
-            aOut = result[0][sTable];
-          }
-          // Print Results        
-          console.log({ action: sAction, options:options, result:aOut });
-          resolve(aOut)      
-        }
-      });    
-    // },Math.random()*1000);
+        // Print Results        
+        // console.log({ action: sAction, options:options, result:aOut });
+        resolve(aOut)      
+      }
+    });    
   });
 }
 
@@ -49,7 +57,7 @@ const lowerLeft = [-74.009180, 40.716425];
 const deltaLon  = 2 * Math.abs(center[0] - lowerLeft[0]);
 const deltaLat  = 2 * Math.abs(center[1] - lowerLeft[1]);
 
-const NQueries = 1;
+const NQueries = 100; // even fast covered index query can't handle 100 queries per second, local system chokes
 const N = 20;
 
 
